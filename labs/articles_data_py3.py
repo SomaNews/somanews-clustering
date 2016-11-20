@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 
 import numpy as np
 import pandas as pd
@@ -18,27 +18,27 @@ def remove_headlines(text, headline_path):
     headlines = pd.read_pickle(headline_path)
     headlines = headlines['headline'].tolist()
     result = re.match(r"[^[]*\[([^]]*)\]", text)
-    
+
     if result:
         if result.groups()[0] == '경향포토':
             text = text.replace(text, 'NaN')
             return text
-        
+
         for headline in headlines:
             text = text.replace(headline, ' ')
-        
+
     return text
 
 def is_dirty_article(title, content, min_len = 100):
     if(len(content) < min_len):
         return True
-    
+
     dh = get_dirty_headlines()
     result = re.match(r"[^[]*\[([^]]*)\]", title)
     if result:
         if result.groups()[0] in dh:
             return True
-        
+
     return False
 
 def get_dirty_headlines():
@@ -71,41 +71,41 @@ def find_recent_articles(collection, catelist_path, target_time):
 
     articles_df['cate'] = new_categories
     target_list = get_target_cate()
-    
+
     return articles_df[articles_df['cate'].isin(target_list)].reset_index(drop=True)
 
 class Sentences(object):
     def __init__(self, dirname, size):
         self.dirname = dirname
         self.size = size
- 
+
     def __iter__(self):
         for fname in os.listdir(self.dirname)[:self.size]:
             for line in open(os.path.join(self.dirname, fname)):
                 yield line.split()
-                                
+
 def makeDataset(collection, target_dir, corpus_path, batch_size=5000, workers=4, tokenize=cn.pos_tags):
     articles = collection.find()
-    
+
     articles_list = []
     for article in articles:
         articles_list.append(article)
     articles_df = pd.DataFrame.from_dict(articles_list)
     print("Number of articles - %d" % len(articles_df))
-    
+
     corpus_df = pd.read_pickle(corpus_path)
     print("Number of corpus - %d" % len(corpus_df))
-    
+
     corpus_words = [row[1] for row in corpus_df.iteritems()]
     articles_words = [aricle['title'] + ' ' + aricle['content'] for idx, aricle in articles_df.iterrows()]
     words = corpus_words + articles_words
     corpus_words = []
     articles_words = []
     print("Number of words - %d" % len(words))
-    
+
     batchs = [words[i:i + batch_size] for i in xrange(0, len(words), batch_size)]
     print("Number of batchs - %d" % len(batchs))
-    
+
     # p = Pool(1)
     for idx, batch in enumerate(batchs):
         t0 = time()
@@ -115,7 +115,7 @@ def makeDataset(collection, target_dir, corpus_path, batch_size=5000, workers=4,
         f.write("\n".join(tokens).encode('utf8'))
         f.close()
         print("Batch#%d - tokenize took %f sec"%(idx, time() - t0))
-        
+
     return len(batchs)
 
 def save_to_articles(train, collections):
@@ -130,7 +130,7 @@ def save_to_clusters(train, prefix, collections, cohesions):
     clusters_infors = [(name, group) for name, group in train.groupby('cluster')]
     prefix = prefix * 1000
     i = 0
-    
+
     for cluster in clusters_infors:
         new_cluster = cluster[0] + prefix
         info = cluster[1].size
@@ -167,10 +167,9 @@ def save_to_clusters(train, prefix, collections, cohesions):
         i = i+1
 
     calced_cluster, sort_cdf = ntc_rank.calc_issue_rank(clusters)
-    
+
     try:
         collections.insert_many(calced_cluster)
         print("Number of clusters is %d"%len(calced_cluster))
     except BulkWriteError as bwe:
         pass
-    
